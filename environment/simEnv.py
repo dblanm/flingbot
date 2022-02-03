@@ -10,10 +10,10 @@ from .utils import (
     pixels_to_3d_positions)
 import torch
 from .exceptions import MoveJointsException
-from learning.nets import prepare_image
+from deps.flingbot.learning.nets import prepare_image
 from typing import List, Callable
 from itertools import product
-from environment.flex_utils import (
+from .flex_utils import (
     set_scene,
     get_image,
     get_current_covered_area,
@@ -558,6 +558,7 @@ class SimEnv:
         raise NotImplementedError()
 
     def get_max_value_valid_action(self, value_maps) -> dict:
+        # Stack the (rotations*scale) value maps
         stacked_value_maps = torch.stack(tuple(value_maps.values()))
 
         # (**) filter out points too close to edge
@@ -743,11 +744,14 @@ class SimEnv:
             else:
                 speed = 0.1
         target_pos = np.array(pos)
+        print(f'Pos shape={target_pos}, curr_pos={pos}')
         for step in range(limit):
             curr_pos = self.action_tool._get_pos()[0]
             deltas = [(targ - curr)
                       for targ, curr in zip(target_pos, curr_pos)]
             dists = [np.linalg.norm(delta) for delta in deltas]
+            # print(f'Pos shape={target_pos.shape}, curr_pos={curr_pos.shape}, '
+            #       f'deltas={len(deltas)}, dists={dists}')
             if all([dist < eps for dist in dists]) and\
                     (min_steps is None or step > min_steps):
                 return

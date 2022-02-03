@@ -67,7 +67,7 @@ def blender_render_cloth(cloth_mesh, resolution):
         '-E', 'BLENDER_EEVEE',
         '--background',
         '--python',
-        'render_rgbd.py',
+        'deps/flingbot/render_rgbd.py',
         obj_path,
         output_prefix,
         str(resolution)]

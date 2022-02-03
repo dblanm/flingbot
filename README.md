@@ -166,7 +166,7 @@ wget https://flingbot.cs.columbia.edu/data/flingbot-rect-train.hdf5
 ```
 Then train the model from scratch with
 ```sh
-python run_sim.py --tasks_path flingbot-rect-train.hdf5 --num_processes 16 --log flingbot-train-from-scratch --action_primitives fling
+python run_sim.py --tasks flingbot-rect-train.hdf5 --num_processes 16 --log flingbot-train-from-scratch --action_primitives fling
 ```
 Make sure to change `num_processes` appropriately for your GPU memory capacity.
 You can also change `action_primitive` to any subset of `['fling', 'stretchdrag', 'drag', 'place']`. 

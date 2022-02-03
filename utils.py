@@ -1,8 +1,8 @@
 from argparse import ArgumentParser
-from environment import SimEnv, TaskLoader
-from learning.nets import MaximumValuePolicy
-from learning.utils import GraspDataset
-from environment.utils import plot_before_after
+from deps.flingbot.environment import SimEnv, TaskLoader
+from deps.flingbot.learning.nets import MaximumValuePolicy
+from deps.flingbot.learning.utils import GraspDataset
+from deps.flingbot.environment.utils import plot_before_after
 from torch.utils.data import DataLoader
 from filelock import FileLock
 from time import time

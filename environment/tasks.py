@@ -1,7 +1,7 @@
 import h5py
 import hashlib
 try:
-    from environment.flex_utils import (
+    from .flex_utils import (
         get_default_config,
         set_scene,
         center_object,
@@ -11,7 +11,7 @@ try:
         PickerPickPlace
     )
 except:
-    from flex_utils import (
+    from .flex_utils import (
         get_default_config,
         set_scene,
         center_object,
