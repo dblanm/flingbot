@@ -28,7 +28,6 @@ import os
 import pyflex
 import cv2
 
-
 class SimEnv:
     def __init__(self,
                  replay_buffer_path: str,
@@ -67,13 +66,15 @@ class SimEnv:
         self.render_engine = render_engine
 
         self.conservative_grasp_radius = conservative_grasp_radius
-        self.rotations = [(2*i/(num_rotations-1) - 1) * 90
-                          for i in range(num_rotations)]
-        if 'fling' not in action_primitives:
-            # When using pick & place or pick & drag, allow model
-            # to place all 360 degrees around pick
-            self.rotations = [(2*i/num_rotations - 1) *
-                              180 for i in range(num_rotations)]
+        if num_rotations > 1:
+            self.rotations = [(2*i/(num_rotations-1) - 1) * 90 for i in range(num_rotations)]
+            if 'fling' not in action_primitives:
+                # When using pick & place or pick & drag, allow model
+                # to place all 360 degrees around pick
+                self.rotations = [(2*i/num_rotations - 1) *
+                                  180 for i in range(num_rotations)]
+        else:
+            self.rotations = [0.0]
         self.scale_factors = np.array(scale_factors)
         self.use_adaptive_scaling = use_adaptive_scaling
         self.adaptive_scale_factors = self.scale_factors.copy()
@@ -247,6 +248,7 @@ class SimEnv:
                 center=(pix_2[1], pix_2[0]),
                 radius=self.conservative_grasp_radius,
                 color=1, thickness=-1).astype(bool)
+            # TODO What was this value for??
             retval.update({
                 'p1_grasp_cloth': cloth_mask[grasp_mask_1].all(),
                 'p2_grasp_cloth': cloth_mask[grasp_mask_2].all(),
@@ -470,8 +472,7 @@ class SimEnv:
         self.reset_end_effectors()
         wait_until_stable(gui=self.gui)
         postaction_positions = pyflex.get_positions().reshape(-1, 4)[:, :3]
-        deltas = np.linalg.norm(
-            np.abs(postaction_positions - self.preaction_positions), axis=1)
+        deltas = np.linalg.norm(np.abs(postaction_positions - self.preaction_positions), axis=1)
         if deltas.max() < 5e-2:
             # if didn't really move cloth then end early
             self.terminate = True
@@ -744,7 +745,7 @@ class SimEnv:
             else:
                 speed = 0.1
         target_pos = np.array(pos)
-        print(f'Pos shape={target_pos}, curr_pos={pos}')
+        # print(f'Pos shape={target_pos}, curr_pos={pos}')
         for step in range(limit):
             curr_pos = self.action_tool._get_pos()[0]
             deltas = [(targ - curr)
@@ -805,8 +806,7 @@ class SimEnv:
                 key='visualization_dir',
                 value=vis_dir)
         self.env_video_frames.clear()
-        self.episode_memory.dump(
-            self.replay_buffer_path)
+        self.episode_memory.dump(self.replay_buffer_path)
         del self.episode_memory
         self.episode_memory = Memory()
 
