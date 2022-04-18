@@ -57,6 +57,8 @@ def get_cloth_mesh(
 
 
 def blender_render_cloth(cloth_mesh, resolution):
+    import os
+    env = os.environ.copy()
     output_prefix = '/tmp/' + str(os.getpid())
     obj_path = output_prefix + '.obj'
     cloth_mesh.export(obj_path)
@@ -75,9 +77,7 @@ def blender_render_cloth(cloth_mesh, resolution):
         while True:
             try:
                 # render images
-                subprocess.check_call(
-                    commands,
-                    stdout=FNULL)
+                subprocess.check_call(commands, stdout=FNULL, env=env)
                 break
             except Exception as e:
                 print(e)
@@ -366,12 +366,25 @@ def draw_action(action_primitive, shape, pixels, **kwargs):
         raise NotImplementedError()
 
 
+def plot_value_map(value_map, all_value_maps, fig, axes, ax_idx):
+    if value_map is not None:
+        imshow = axes[ax_idx].imshow(
+            value_map, cmap='jet',
+            vmin=all_value_maps.min(), vmax=all_value_maps.max())
+        if ax_idx == 0:
+            axes[ax_idx].set_title('Pick Value Map')
+        elif ax_idx == 1:
+            axes[ax_idx].set_title('Value Map')
+        fig.colorbar(mappable=imshow, ax=axes[ax_idx], shrink=0.8)
+    else:
+        axes[ax_idx].set_title('No Value Map')
+
 def visualize_action(
     action_primitive, transformed_pixels,
     pretransform_pixels,
     rotation, scale, pretransform_depth,
     pretransform_rgb,
-    transformed_rgb, value_map=None,
+    transformed_rgb, value_map=None, pick_map=None,
     all_value_maps=None,
         **kwargs):
     if value_map is None and all_value_maps is None:
@@ -387,31 +400,31 @@ def visualize_action(
         plt.imshow(action, alpha=0.9)
         plt.title(f'Final {action_primitive}')
     else:
-        fig, axes = plt.subplots(1, 3)
+        fig, axes = plt.subplots(1, 4)
         fig.set_figheight(3.5)
-        fig.set_figwidth(9)
+        fig.set_figwidth(12)
         for ax in axes.flatten():
             ax.axis('off')
-        if value_map is not None:
-            imshow = axes[0].imshow(
-                value_map, cmap='jet',
-                vmin=all_value_maps.min(), vmax=all_value_maps.max())
-            axes[0].set_title('Value Map')
-            fig.colorbar(mappable=imshow, ax=axes[0], shrink=0.8)
-        else:
-            axes[0].set_title('No Value Map')
-        axes[1].imshow(
+        # Plot the place value map
+        plot_value_map(value_map=pick_map, all_value_maps=all_value_maps,
+                       fig=fig, axes=axes, ax_idx=0)
+        plot_value_map(value_map=value_map, all_value_maps=all_value_maps,
+                       fig=fig, axes=axes, ax_idx=1)
+
+        # Plot the transformed
+        axes[2].imshow(
             np.swapaxes(np.swapaxes(transformed_rgb, 0, -1), 0, 1))
         action = draw_action(
             action_primitive=action_primitive,
             shape=transformed_rgb.shape[-2:],
             pixels=transformed_pixels)
-        axes[1].imshow(action, alpha=0.9)
-        axes[1].set_title(action_primitive)
-        # final resized
+        axes[2].imshow(action, alpha=0.9)
+        axes[2].set_title(action_primitive)
+
+        # Plot the pretransformed
         if pretransform_rgb.shape[0] != pretransform_rgb.shape[1]:
             pretransform_rgb = get_square_crop(pretransform_rgb.copy())
-        axes[2].imshow(pretransform_rgb)
+        axes[3].imshow(pretransform_rgb)
         action = draw_action(
             action_primitive=action_primitive,
             shape=pretransform_depth.shape[:2],
@@ -419,8 +432,8 @@ def visualize_action(
             thickness=3)
         if action.shape[0] != action.shape[1]:
             action = get_square_crop(action.copy())
-        axes[2].imshow(action, alpha=0.9)
-        axes[2].set_title(f'Final {action_primitive}')
+        axes[3].imshow(action, alpha=0.9)
+        axes[3].set_title(f'Final {action_primitive}')
     plt.tight_layout(pad=0)
     # dump to image in memory
     buf = io.BytesIO()
@@ -447,17 +460,15 @@ def plot_before_after(group, fontsize=16, output_path=None):
     rgb = img[:, :, :3]
     ax1.imshow(rgb)
     ax1.set_title('Before ({:.03f})'.format(
-        group.attrs['preaction_coverage']
-        / group.attrs['max_coverage']),
+        group.attrs['preaction_coverage'] / group.attrs['max_coverage']),
         fontsize=fontsize)
 
-    # Plot after
-    img = get_img('next_observations')
+    # Plot after TODO Add this function to plot utils
+    img = get_img('next_pretransformed_observations')
     rgb = img[:, :, :3]
     ax2.imshow(rgb)
     ax2.set_title('After ({:.03f})'.format(
-        group.attrs['postaction_coverage']
-        / group.attrs['max_coverage']),
+        group.attrs['postaction_coverage'] / group.attrs['max_coverage']),
         fontsize=fontsize)
     plt.tight_layout()
     if output_path is not None:
