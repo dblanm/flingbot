@@ -1,12 +1,14 @@
-import torch.nn as nn
-import torch
-from scipy import ndimage as nd
-import cv2
-from typing import List
 import random
-from time import time
+
+import cv2
 import ray
-import numpy as np
+import torch
+import torch.nn as nn
+
+from time import time
+from typing import List
+from scipy import ndimage as nd
+from torch.utils.data import DataLoader
 
 
 class BasicBlock(nn.Module):
@@ -18,22 +20,18 @@ class BasicBlock(nn.Module):
         super(BasicBlock, self).__init__()
         if non_linearity is not None:
             self.net = nn.Sequential(
-                nn.Conv2d(inplanes,
-                          planes,
+                nn.Conv2d(inplanes, planes,
                           kernel_size=kernel_size,
-                          stride=stride,
-                          padding=padding,
+                          stride=stride, padding=padding,
                           bias=False),
                 nn.BatchNorm2d(planes),
                 non_linearity()
             )
         else:
             self.net = nn.Sequential(
-                nn.Conv2d(inplanes,
-                          planes,
+                nn.Conv2d(inplanes, planes,
                           kernel_size=kernel_size,
-                          stride=stride,
-                          padding=padding,
+                          stride=stride, padding=padding,
                           bias=False)
             )
 
@@ -225,7 +223,7 @@ class Policy:
     def get_action_single(self, obs):
         raise NotImplementedError()
 
-    def act(self, obs):
+    def act(self, obs, explore=False):
         return [self.get_action_single(o) for o in obs]
 
 
@@ -235,6 +233,8 @@ class MaximumValuePolicy(nn.Module, Policy):
                  action_expl_decay: float,
                  value_expl_prob: float,
                  value_expl_decay: float,
+                 lr : float,
+                 weight_decay: float,
                  device=None,
                  **kwargs):
         super().__init__()
@@ -263,6 +263,10 @@ class MaximumValuePolicy(nn.Module, Policy):
         self.should_explore_value = lambda: \
             self.value_expl_prob > random.random()
 
+        # Create the optimizer
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=lr,
+                                          weight_decay=weight_decay)
+        self.criterion = torch.nn.functional.mse_loss
         self.eval()
 
     def decay_exploration(self):
@@ -297,3 +301,25 @@ class MaximumValuePolicy(nn.Module, Policy):
 
     def forward(self, obs):
         return self.act(obs)
+
+    def update_network(self, net_key, dataset, batch_size,
+                       num_workers=4, writer=None, num_updates=1):
+        loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True,
+                            drop_last=True, num_workers=num_workers)
+
+        for action_primitive, value_net in self.value_nets.items():
+            # We only need action_mask = pick mask, label=reward and obs
+            for _, (obs, _, action_mask, _, label, _, _, _) in zip(range(num_updates), loader):
+                value_pred_dense = value_net(obs.to(self.device, non_blocking=True))
+                value_pred = torch.masked_select(
+                    value_pred_dense.squeeze(),
+                    action_mask.to(self.device, non_blocking=True))
+                loss = self.criterion(value_pred, label.to(self.device, non_blocking=True))
+
+                self.optimizer.zero_grad()
+                loss.backward()
+
+                self.optimizer.step()
+                value_net.steps += 1
+                writer.add_scalar(f'loss/{net_key}', loss.cpu().item(),
+                                  global_step=value_net.steps)
