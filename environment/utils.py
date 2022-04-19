@@ -1,4 +1,6 @@
 from torch import cat, tensor
+import matplotlib as mpl
+mpl.use('Agg')
 from matplotlib import pyplot as plt
 import pickle
 import numpy as np
