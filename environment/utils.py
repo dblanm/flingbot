@@ -360,7 +360,7 @@ def draw_action(action_primitive, shape, pixels, **kwargs):
         return draw_arrow(
             shape=shape, pixels=pixels,
             color=(1, 0, 1, 1), **kwargs)
-    elif action_primitive == 'place':
+    elif action_primitive == 'place' or action_primitive == 'dynamic' or action_primitive == 'fling-place':
         return draw_arrow(
             shape=shape, pixels=pixels,
             color=(0, 1, 1, 1), **kwargs)
@@ -597,18 +597,11 @@ def preprocess_obs(rgb, d):
 
 def get_largest_component(arr):
     # label connected components for mask
-    labeled_arr, num_components = \
-        morph.label(
-            arr, return_num=True,
-            background=0)
-    masks = [(i, (labeled_arr == i).astype(np.uint8))
-             for i in range(0, num_components)]
-    masks.append((
-        len(masks),
-        1-(np.sum(mask for i, mask in masks) != 0)))
-    sorted_volumes = sorted(
-        masks, key=lambda item: np.count_nonzero(item[1]),
-        reverse=True)
+    #TODO Fix, if there are no components we will get None
+    labeled_arr, num_components = morph.label(arr, return_num=True, background=0)
+    masks = [(i, (labeled_arr == i).astype(np.uint8)) for i in range(0, num_components)]
+    masks.append((len(masks), 1-(np.sum(mask for i, mask in masks) != 0)))
+    sorted_volumes = sorted(masks, key=lambda item: np.count_nonzero(item[1]), reverse=True)
     for i, mask in sorted_volumes:
         if arr[mask == 1].sum() == 0:
             continue
