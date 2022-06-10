@@ -309,7 +309,7 @@ class MaximumValuePolicy(nn.Module, Policy):
 
         for action_primitive, value_net in self.value_nets.items():
             # We only need action_mask = pick mask, label=reward and obs
-            for _, (obs, _, _, action_mask, _, label, _, _, _) in zip(range(num_updates), loader):
+            for _, (obs, _, _, action_mask, _, label, _, _, _, _) in zip(range(num_updates), loader):
                 value_pred_dense = value_net(obs.to(self.device, non_blocking=True))
                 value_pred = torch.masked_select(
                     value_pred_dense.squeeze(),
