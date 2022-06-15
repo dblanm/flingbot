@@ -208,11 +208,14 @@ class Policy:
             print(f'\t{ap}')
 
         # rotation angle in degrees, counter-clockwise
-        self.rotations = [(2*i/(num_rotations-1) - 1) * 90
-                          for i in range(num_rotations)]
-        if 'fling' not in action_primitives:
-            self.rotations = [(2*i/num_rotations - 1) *
-                              180 for i in range(num_rotations)]
+        if num_rotations < 2:
+            self.rotations = [0.0]
+        else:
+            self.rotations = [(2*i/(num_rotations-1) - 1) * 90
+                              for i in range(num_rotations)]
+            if 'fling' not in action_primitives:
+                self.rotations = [(2*i/num_rotations - 1) *
+                                  180 for i in range(num_rotations)]
         self.scale_factors = scale_factors
         self.num_transforms = len(self.rotations) * len(self.scale_factors)
         self.obs_dim = obs_dim
